@@ -1,4 +1,5 @@
 LICENSE
+README.md
 pyproject.toml
 setup.cfg
 sangfor_api_client.egg-info/PKG-INFO

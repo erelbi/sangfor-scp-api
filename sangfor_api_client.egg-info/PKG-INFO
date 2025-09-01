@@ -2,7 +2,7 @@ Metadata-Version: 2.4
 Name: sangfor-api-client
 Version: 0.0.1
 Summary: Sangfor SCP Open-API için bir istemci kütüphanesi (Cilbir Edition)
-Home-page: [https://github.com/kullanici-adiniz/sangfor-api-client](https://github.com/kullanici-adiniz/sangfor-api-client)
+Home-page: [https://github.com/erelbi/sangfor-scp-api](https://github.com/erelbi/sangfor-scp-api)
 Author: Ergün Elvan Bilsel
 Author-email: bilselergun@gmail.com
 Classifier: Programming Language :: Python :: 3
@@ -14,3 +14,5 @@ License-File: LICENSE
 Requires-Dist: requests
 Requires-Dist: urllib3
 Dynamic: license-file
+
+# sangfor-scp-api

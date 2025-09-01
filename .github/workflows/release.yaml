@@ -2,16 +2,19 @@
 name: Build, Test, and Publish Python Package
 
 # Bu iş akışının ne zaman tetikleneceğini belirler.
-# Yeni bir sürüm etiketi (release tag) push'landığında çalışır.
+# main branch'ine yapılan her push'ta veya yeni bir sürüm etiketi (release tag) push'landığında çalışır.
 on:
   push:
+    branches: [ "main" ]
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+" # v1.2.3 gibi etiketlerle eşleşir
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   # --- İŞ 1: Test ve Kod Kalitesi Kontrolü ---
   build_and_test:
-    name: Build and Test
+    name: Test and Lint
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -40,12 +43,19 @@ jobs:
         # Diğer stil hatalarını uyarı olarak kabul et
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
+    # Not: Bu adımın çalışması için projenizde testlerinizin olması gerekir.
+    # - name: Test with pytest
+    #   run: |
+    #     pytest
+
   # --- İŞ 2: Paketi Derle ve PyPI'a Yükle ---
-  deploy:
+  publish:
     name: Publish to PyPI
-    # Yalnızca 'build_and_test' işi başarılı olursa çalışır
+    # Yalnızca 'build_and_test' işi başarılı olursa ve bir git tag'i push'landıysa çalışır
     needs: build_and_test
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
     permissions:
       id-token: write # PyPI ile güvenli bağlantı (Trusted Publishing) için gereklidir
 

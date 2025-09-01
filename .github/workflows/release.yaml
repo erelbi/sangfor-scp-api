@@ -1,54 +1,79 @@
 # GitHub Actions İş Akışı: Python Paketini Test Et, Derle ve Yayınla
-name: Publish Python Package to PyPI
+name: Test, Build, and Publish Python Package
 
-# Bu iş akışı, yeni bir sürüm etiketi (örn: v0.1.0) push'landığında çalışır.
+# Bu iş akışının ne zaman tetikleneceğini belirler.
+# 'main' branch'ine yapılan her push/pull_request'te testleri çalıştırır.
+# Yeni bir sürüm etiketi (örn: v0.1.0) push'landığında ise yayınlama yapar.
 on:
   push:
+    branches: [ "main" ]
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+" # v1.2.3 gibi etiketlerle eşleşir
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
-  # --- İŞ 1: Paketi Derle ve Test Et ---
-  build-and-test:
-    name: Build and Test Package
+  # --- İŞ 1: Test ve Kod Kalitesi Kontrolü ---
+  test:
+    name: Test and Lint
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"] # Farklı Python versiyonlarında test eder
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Kodu İndir
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.x"
+      - name: Python Kurulumu (${{ matrix.python-version }})
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Install dependencies and build package
-      run: |
-        python -m pip install --upgrade pip build
-        python -m build
+      - name: Bağımlılıkları Yükle
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest
+          # Paketi ve bağımlılıklarını düzenlenebilir modda kurar
+          pip install -e .
 
-    - name: Upload artifact for publishing
-      uses: actions/upload-artifact@v4
-      with:
-        name: python-package
-        path: ./dist
+      - name: Flake8 ile Kod Kalitesini Kontrol Et
+        run: |
+          # Python syntax hataları veya tanımsız isimler varsa derlemeyi durdur
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Diğer stil hatalarını uyarı olarak kabul et
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      
+      # Not: Bu adımın çalışması için projenizde testlerinizin olması gerekir.
+      # - name: Test with pytest
+      #   run: pytest
 
   # --- İŞ 2: Paketi PyPI'a Yükle ---
-  publish-to-pypi:
+  publish:
     name: Publish to PyPI
-    # Yalnızca 'build-and-test' işi başarılı olursa çalışır
-    needs: build-and-test
+    # Yalnızca 'test' işi başarılı olursa ve bir git tag'i push'landıysa çalışır
+    needs: test
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write # Güvenli OIDC bağlantısı için gereklidir
+    # Bu 'if' koşulu, sadece v1.2.3 gibi etiketler gönderildiğinde yayınlama yapılmasını sağlar
+    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
-    - name: Download build artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: python-package
-        path: dist
+      - name: Kodu İndir
+        uses: actions/checkout@v4
 
-    - name: Publish package to PyPI
-      uses: pypa/gh-action-pypi-publish@v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Python Kurulumu
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Derleme Bağımlılıklarını Yükle
+        run: python -m pip install --upgrade build
+
+      - name: Paketi Derle
+        run: python -m build
+
+      - name: Paketi PyPI'a Yükle
+        uses: pypa/gh-action-pypi-publish@v1
+        with:
+          # GitHub'a kaydettiğiniz sırrı burada kullanıyoruz
+          password: ${{ secrets.PYPI_API_TOKEN }}
